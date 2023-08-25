@@ -6,24 +6,40 @@ import (
 	"github.com/wenooij/nuggit/v1alpha"
 )
 
-func IndicatorPage() *nuggit.Graph {
-	var b graphs.Builder
-
+func indicatorPage() (b *graphs.Builder, out string) {
+	b = &graphs.Builder{}
 	v := b.Node("Var", graphs.Data(v1alpha.Var{
-		Default: &v1alpha.Const{Type: nuggit.TypeString},
+		Default: &v1alpha.Const{Type: nuggit.TypeString, Value: "20_year_treasury_rate"},
 	}))
-	enc := b.Node("String", graphs.Data(v1alpha.String{
+	path := b.Node("String", graphs.Data(v1alpha.String{
 		Op: v1alpha.StringURLPathEscape,
 	}), graphs.Edge(v))
-	host := b.Node("Const", graphs.Data(v1alpha.Const{
-		Type:  nuggit.TypeString,
-		Value: "https://ycharts.com/indicators/",
-	}))
+	source := b.Node("Source",
+		graphs.Data(v1alpha.Source{
+			Scheme: "https",
+			Host:   "ycharts.com",
+			Path:   "/indicators/",
+		}),
+		graphs.Edge(path, graphs.SrcField("path"), graphs.Glom(nuggit.GlomAppend)),
+	)
+	return b, source
+}
+
+func IndicatorPage() *nuggit.Graph {
+	b, source := indicatorPage()
 	http := b.Node("HTTP",
-		graphs.Edge(host, graphs.SrcField("source.host")),
-		graphs.Edge(enc, graphs.SrcField("source.path")),
+		graphs.Data(v1alpha.HTTP{}),
+		graphs.Edge(source),
 	)
 	b.Node("Sink", graphs.Key("out"), graphs.Edge(http))
 	return b.Build()
 }
 
+func IndicatorChromedp() *nuggit.Graph {
+	b, source := indicatorPage()
+	b.Node("Chromedp",
+		graphs.Key("out"),
+		graphs.Edge(source, graphs.SrcField("source")),
+	)
+	return b.Build()
+}
