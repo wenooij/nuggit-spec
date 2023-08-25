@@ -31,15 +31,23 @@ func IndicatorPage() *nuggit.Graph {
 		graphs.Data(v1alpha.HTTP{}),
 		graphs.Edge(source),
 	)
-	b.Node("Sink", graphs.Key("out"), graphs.Edge(http))
+	sink := b.Node("Sink", graphs.Edge(http))
+	html := b.Node("HTML", graphs.Edge(sink, graphs.SrcField("sink")))
+	indicatorSelect(b, html)
 	return b.Build()
 }
 
 func IndicatorChromedp() *nuggit.Graph {
 	b, source := indicatorPage()
-	b.Node("Chromedp",
-		graphs.Key("out"),
-		graphs.Edge(source, graphs.SrcField("source")),
-	)
+	chromedp := b.Node("Chromedp", graphs.Edge(source, graphs.SrcField("source")))
+	html := b.Node("HTML", graphs.Edge(chromedp, graphs.SrcField("bytes")))
+	indicatorSelect(b, html)
 	return b.Build()
+}
+
+func indicatorSelect(b *graphs.Builder, html string) {
+	b.Node("Selector", graphs.Key("out"),
+		graphs.Data(v1alpha.Selector{Selector: "div.key-stat-title"}),
+		graphs.Edge(html, graphs.SrcField("node")),
+	)
 }
